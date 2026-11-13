@@ -9,7 +9,7 @@ import { useNav } from "../nav";
 import { canListen, listen, speak } from "../speech";
 import { Chip, Icon, Verdict } from "../ui/kit";
 import { Num } from "../ui/charts";
-import { CAT_LABEL, ago, cls, crore, fq, pct, tone } from "../util";
+import { CAT_LABEL, ago, cls, crore, fq, pct, tone, chg, chgTone, hasText } from "../util";
 import { dayChange, moves } from "../alerts";
 import type { Dossier, Rules } from "../types";
 
@@ -222,7 +222,7 @@ function metricText(d: Dossier, metric: string) {
   if (metric === "margin") return lq.margin ? `${name} ${fq(lq.period)}: EBITDA margin ${lq.margin.now.toFixed(1)}% (${pp(lq.margin.qoq_pp)} QoQ, ${pp(lq.margin.yoy_pp)} YoY).` : `${name} ${fq(lq.period)}: ${lq.headline}.`;
   const m = lq.metrics.find((x) => x.label.toLowerCase() === metric.toLowerCase()) ?? (metric === "EBITDA" ? lq.metrics.find((x) => /nii|financing/i.test(x.label)) : undefined);
   if (!m) return `${name} ${fq(lq.period)}: ${lq.headline}.`;
-  return `${name} ${m.label}, ${fq(lq.period)} (${lq.period}): ${crore(m.value)}, ${pct(m.qoq)} QoQ, ${pct(m.yoy)} YoY.`;
+  return `${name} ${m.label}, ${fq(lq.period)} (${lq.period}): ${crore(m.value)}, ${chg(m, "qoq")} QoQ, ${chg(m, "yoy")} YoY.`;
 }
 const pp = (n: number | null) => (n == null ? "n/a" : `${n > 0 ? "+" : ""}${n}pp`);
 
@@ -276,9 +276,9 @@ function AnswerView({ a, onPick, onAsk, onSpeak }: { a: Ans; onPick: (sym: strin
             <span className={cls("pill", (lq.margin.qoq_pp ?? 0) >= 0 ? "up" : "down")}>{pp(lq.margin.qoq_pp)} QoQ</span><span className={cls("pill", (lq.margin.yoy_pp ?? 0) >= 0 ? "up" : "down")}>{pp(lq.margin.yoy_pp)} YoY</span></div>
             : (() => { const m = lq.metrics.find((x) => x.label.toLowerCase() === a.metric.toLowerCase()) ?? lq.metrics[0];
               return <div className="ans-big"><Num value={m.value} prefix="₹" suffix=" Cr" />
-                <span className={cls("pill", (m.qoq ?? 0) >= 0 ? "up" : "down")}>{pct(m.qoq)} QoQ</span><span className={cls("pill", (m.yoy ?? 0) >= 0 ? "up" : "down")}>{pct(m.yoy)} YoY</span></div>; })()}
+                <span className={cls("pill", chgTone(m, "qoq") || "up")}>{chg(m, "qoq")} QoQ</span><span className={cls("pill", chgTone(m, "yoy") || "up")}>{chg(m, "yoy")} YoY</span></div>; })()}
           <table className="rt"><tbody>{lq.metrics.map((m) => <tr key={m.label} className={m.label.toLowerCase() === a.metric.toLowerCase() ? "hl" : ""}><td>{m.label}</td><td className="num">{crore(m.value)}</td>
-            <td className={cls("num", tone(m.qoq))}>{pct(m.qoq)}</td><td className={cls("num", tone(m.yoy))}>{pct(m.yoy)}</td></tr>)}</tbody></table>
+            <td className={cls("num", chgTone(m, "qoq"))}>{chg(m, "qoq")}</td><td className={cls("num", chgTone(m, "yoy"))}>{chg(m, "yoy")}</td></tr>)}</tbody></table>
           {lq.flags.map((f) => <div key={f} className="flag">⚑ {f}</div>)}
         </> : <p>{a.text}</p>}
         {src(a.d)}{follow(a.d)}
@@ -295,7 +295,7 @@ function AnswerView({ a, onPick, onAsk, onSpeak }: { a: Ans; onPick: (sym: strin
       return <div className="bubble bot">{head(d)}
         {a.section === "promises" && (d.promises ? <><p className="small">{d.promises.credibility}</p>
           <ul className="promises">{d.promises.promises.slice(0, 5).map((p, i) => <li key={i}><div className="row between"><span className="small dim">{p.said_in} · {p.metric}</span><Verdict v={p.verdict} /></div>
-            <div className="p-promise">“{p.promise}”</div><div className="p-outcome">{p.outcome}</div>{p.evidence && <div className="tiny dim">{p.evidence}</div>}</li>)}</ul></>
+            <div className="p-promise">“{p.promise}”</div><div className="p-outcome">{p.outcome}</div>{hasText(p.evidence) && <div className="tiny dim">{p.evidence}</div>}</li>)}</ul></>
           : <p className="small dim">No checked guidance for {shortName(d.name)} yet{d.analysis ? ` (${d.analysis.coverage})` : ""}.</p>)}
         {a.section === "debate" && (d.bull_bear ? <div className="debate"><div className="bull"><h3>Bull</h3><ul>{d.bull_bear.bull.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
           <div className="bear"><h3>Bear</h3><ul>{d.bull_bear.bear.map((x, i) => <li key={i}>{x}</li>)}</ul></div></div> : <p className="small dim">No bull/bear yet.</p>)}

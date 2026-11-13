@@ -166,6 +166,13 @@ def _dossier_for(sym: str, request: Request) -> dict:
     return d
 
 
+def _chg(m: dict, base_key: str, pct_key: str) -> str:
+    v, b = m.get("value"), m.get(base_key)
+    if v is not None and b is not None and v * b < 0:
+        return "swung to a loss" if v < 0 else "swung to a profit"
+    return "n/a" if m.get(pct_key) is None else f"{m[pct_key]:+}%"
+
+
 def ask_facts(d: dict) -> list[str]:
     """Primary-source facts only: computed numbers, verified quotes, checked promises. No model prose
     (bull/bear) is fed back in, so an answer can't launder an earlier model claim into a 'fact'."""
@@ -174,7 +181,8 @@ def ask_facts(d: dict) -> list[str]:
     lq = s.get("latest_quarter")
     if lq:
         out.append(f"Latest quarter {lq['period']}: " + "; ".join(
-            f"{m['label']} ₹{m['value']} Cr ({m.get('qoq')}% QoQ, {m.get('yoy')}% YoY)" for m in lq.get("metrics", [])))
+            f"{m['label']} ₹{m['value']} Cr (prior quarter ₹{m.get('prev')} Cr, {_chg(m, 'prev', 'qoq')} QoQ; "
+            f"year-ago ₹{m.get('yago')} Cr, {_chg(m, 'yago', 'yoy')} YoY)" for m in lq.get("metrics", [])))
         if lq.get("margin"):
             out.append(f"EBITDA margin {lq['margin']['now']}% in {lq['period']} ({lq['margin'].get('qoq_pp')}pp QoQ, {lq['margin'].get('yoy_pp')}pp YoY)")
         out += [f"Flag: {f}" for f in lq.get("flags", [])]
