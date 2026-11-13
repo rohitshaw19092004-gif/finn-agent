@@ -246,3 +246,9 @@ def test_copilot_answer_must_cite_the_companys_own_facts(fake_gemini, monkeypatc
     assert j["status"] == "ok" and j["cites"] == [facts[0]]          # out-of-range citation dropped
     monkeypatch.setattr(api.llm.http, "client", lambda: reply([]))
     assert c.get("/api/ask", params={"symbol": "CLEAN", "q": "what about exports?"}).json()["status"] == "unsupported"
+    monkeypatch.setattr(api.llm.http, "client", lambda: reply([], answerable=False))
+    j = c.get("/api/ask", params={"symbol": "CLEAN", "q": "how are exports going"}).json()
+    assert "Margins fell" not in j["answer"] and j["cites"] == []    # uncited model text never shown
+    monkeypatch.setattr(api.llm.http, "client", lambda: reply([2], answerable=False))
+    j = c.get("/api/ask", params={"symbol": "CLEAN", "q": "what did they say about export demand"}).json()
+    assert j["partial"] is True and j["cites"] == [facts[1]]

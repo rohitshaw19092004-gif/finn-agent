@@ -51,6 +51,12 @@ def _store(sym: str, d: dict) -> None:
     os.replace(tmp, DOSSIERS / f"{sym}.json")   # atomic: a concurrent reader never sees half a file
 
 
+@app.get("/")
+def root():
+    return {"service": "FINN API", "app": "https://rohitshaw19092004-gif.github.io/finn-agent/",
+            "endpoints": ["/api/health", "/api/search?q=", "/api/research/{symbol}", "/api/ask?symbol=&q="]}
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True, "llm": llm.available(),
@@ -211,10 +217,11 @@ def ask(symbol: str, q: str, request: Request):
     if not res.ok or not isinstance(res.data, dict):
         return {"status": res.status, "error": res.error, "symbol": sym}
     cites = [c for c in res.data.get("cites", []) if isinstance(c, int) and 1 <= c <= len(facts)]
-    if res.data.get("answerable") is False:
-        return {"status": "ok", "answer": res.data.get("answer") or "The company's own filings and calls don't answer that.",
-                "cites": [], "model": res.model, "symbol": sym}
-    if not cites:          # an answer that can't point at a fact isn't shown as an answer
+    partial = res.data.get("answerable") is False
+    if not cites:          # model text that can't point at a fact is never shown
+        if partial:
+            return {"status": "ok", "answer": "The company's own filings and calls don't answer that.",
+                    "cites": [], "model": res.model, "symbol": sym}
         return {"status": "unsupported", "symbol": sym}
-    return {"status": "ok", "answer": res.data.get("answer", ""), "cites": [facts[c - 1] for c in cites],
-            "model": res.model, "symbol": sym}
+    return {"status": "ok", "partial": partial, "answer": res.data.get("answer", ""),
+            "cites": [facts[c - 1] for c in cites], "model": res.model, "symbol": sym}

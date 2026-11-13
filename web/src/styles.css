@@ -508,3 +508,4 @@ q { font-style: italic; font-size: 13.5px; line-height: 1.45; color: var(--ink-2
 @media (min-width: 1024px) { .copilot-bar { bottom: 16px; top: auto; } }
 .askbar .mic.on-soft { color: var(--lav); background: color-mix(in srgb, var(--violet) 20%, transparent); }
 .center { text-align: center; } .center-btn { display: block; margin: 8px auto 0; }
+.chip.warn { display: inline-block; margin-bottom: 6px; color: var(--warn, #b7791f); border-color: currentColor; background: transparent; font-size: 11.5px; padding: 3px 8px; }

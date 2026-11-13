@@ -18,7 +18,7 @@ type Ans =
   | { kind: "metric"; d: Dossier; metric: string; text: string }
   | { kind: "card"; d: Dossier; text: string }
   | { kind: "section"; d: Dossier; section: "promises" | "debate" | "mix" | "balance" | "cash" | "trajectory" | "valuation"; text: string }
-  | { kind: "grounded"; d: Dossier; answer: string; cites: string[]; model?: string; text: string }
+  | { kind: "grounded"; d: Dossier; answer: string; cites: string[]; partial?: boolean; model?: string; text: string }
   | { kind: "facts"; d: Dossier; facts: string[]; text: string }
   | { kind: "brief"; text: string }
   | { kind: "moves"; sym?: string; text: string }
@@ -140,7 +140,7 @@ export function Copilot({ rules, initial }: { rules: Rules; initial?: { q: strin
         const r = await fetch(`${apiBase}/api/ask?symbol=${encodeURIComponent(d.symbol)}&q=${encodeURIComponent(raw)}`);
         if (r.ok) {
           const j = await r.json();
-          if (j.status === "ok" && j.answer) return { kind: "grounded", d, answer: j.answer, cites: j.cites ?? [], model: j.model, text: j.answer };
+          if (j.status === "ok" && j.answer) return { kind: "grounded", d, answer: j.answer, cites: j.cites ?? [], partial: !!j.partial, model: j.model, text: j.answer };
         }
       } catch { /* fall through */ }
     }
@@ -307,9 +307,10 @@ function AnswerView({ a, onPick, onAsk, onSpeak }: { a: Ans; onPick: (sym: strin
         {src(d)}{follow(d)}</div>;
     }
     case "grounded": return <div className="bubble bot">{head(a.d)}
+      {a.partial && <span className="chip warn">Partly answered — the filings only cover some of this</span>}
       <p>{a.answer}</p>
       {a.cites.length > 0 && <ol className="cites">{a.cites.map((c, i) => <li key={i} className="small">{c}</li>)}</ol>}
-      <div className="tiny dim">Answered by {a.model ?? "the model"} using only {shortName(a.d.name)}'s own filings, statements and verified call quotes — every claim cites one.</div>
+      <div className="tiny dim">{a.cites.length ? <>Answered by {a.model ?? "the model"} using only {shortName(a.d.name)}'s own filings, statements and verified call quotes — every claim cites one.</> : <>Checked against {shortName(a.d.name)}'s own filings, statements and verified call quotes.</>}</div>
       {follow(a.d)}</div>;
     case "facts": return <div className="bubble bot">{head(a.d)}
       {a.facts.length ? <><p className="small dim">What {shortName(a.d.name)}'s own filings and calls say:</p><ul className="notes">{a.facts.map((f, i) => <li key={i}>{f}</li>)}</ul></> : <p>{a.text}</p>}
